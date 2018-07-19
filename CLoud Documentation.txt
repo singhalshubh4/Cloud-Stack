@@ -1,0 +1,169 @@
+=>Install Ubuntu 14.04
+
+
+
+(** NOTE => IF ANY ERROR OCCUR. USE COMMAND apt-get update AND REBOOT THE SYSTEM)
+
+=>sudo -i
+=>sudo apt-get update
+
+
+=>sudo apt-get upgrade
+
+
+=>sudo nano /etc/hosts
+
+	(#change in 2nd line)	
+	10.10.40.110    lucifer.cloud.com	lucifer
+=>sudo passwd root
+
+	(#unix password set)
+=>su
+=>apt-get install openntpd
+	
+	
+=>apt-get install openssh-server
+
+=>apt-get install openssh-client
+
+	(#ssh install)	
+=>nano /etc/ssh/sshd_config
+	
+	(#change)PORT 22  ==> PORT 22222
+	
+		/PermitRootLogin without-password ==> /PermitRootLogin yes
+
+=>service ssh restart
+
+	
+=>sudo apt-get install bridge-utils
+
+=>nano /etc/network/interfaces
+	(#paste)
+	(#update ip changes according to ifconfig file)	
+	auto eth0
+	
+	iface eth0 inet manual
+
+		
+	
+	# Public network
+		
+	auto cloudbr0
+		
+	iface cloudbr0 inet static
+   		 
+	address 10.10.40.110
+   		 
+	netmask 255.255.0.0
+   		 
+	gateway 10.10.40.1
+   		 
+	dns-nameservers 8.8.8.8
+   		 
+	bridge_ports eth0
+   		 
+	bridge_fd 5
+   		 
+	bridge_stp off
+   		 
+	bridge_maxwait 1
+
+		
+	
+	# Private network
+		
+	auto cloudbr1
+		
+	iface cloudbr1 inet manual
+  		  
+	bridge_ports none
+  		  
+	bridge_fd 5
+  		  
+	bridge_stp off
+   		  
+	bridge_maxwait 1
+
+
+	
+=>reboot
+=>su
+=>nano /etc/apt/sources.list.d/cloudstack.list
+	
+	(#paste)deb http://cloudstack.apt-get.eu/ubuntu trusty 4.4
+
+
+=>wget -O - http://cloudstack.apt-get.eu/release.asc|apt-key add -
+
+=>sudo apt-get update
+
+=>sudo apt-get --yes install cloudstack-management
+
+=>sudo apt-get --yes install mysql-server
+
+
+
+
+	(#password set for mysql-server)
+=>nano /etc/mysql/conf.d/cloudstack.cnf
+	(paste)[mysqld]
+		innodb_rollback_on_timeout=1
+		innodb_lock_wait_timeout=600
+		max_connections=350
+		server-id=master01
+		log-bin=mysql-bin
+		binlog-format = 'ROW'
+=>sudo service mysql restart
+=>cloudstack-setup-databases cloud:dastaan@localhost --deploy-as=root:772845 -e file -m mymskey44 -k mydbkey00
+		(#user id= dastaan, password =772845)
+=>mkdir -p /export/primary /export/secondary
+=>apt-get install nfs-kernel-server
+=>nano /etc/exports
+	(#paste in last)/export  *(rw,async,no_root_squash,no_subtree_check)
+=>exportfs -a
+=>service nfs-kernel-server restart
+=>showmount -e 10.10.40.110
+	(#check ip address)
+=>mkdir -p /mnt/primary /mnt/secondary
+=>nano /etc/fstab
+	(#paste in last)
+	10.10.40.110:/export/primary   /mnt/primary    nfs rsize=8192,wsize=8192,timeo=14,intr,vers=3,noauto  0   2
+	10.10.40.110:/export/secondary /mnt/secondary  nfs rsize=8192,wsize=8192,timeo=14,intr,vers=3,noauto  0   2
+=>mount /mnt/primary
+=>mount /mnt/secondary
+=>apt-get install cloudstack-agent
+=>nano /etc/libvirt/qemu.conf
+	(#change)  #vnc_listen=0.0.0.0 ==> vnc_listen=0.0.0.0
+=>sudo service libvirt-bin restart
+=>reboot
+=>su
+=>rpcinfo -u 10.10.40.110 mount
+=>mount /mnt/primary
+=>mount /mnt/secondary
+=>/usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt \
+    -m /mnt/secondary -u http://cloudstack.apt-get.eu/systemvm/4.4/systemvm64template-4.4.1-7-kvm.qcow2.bz2 -h kvm -F
+=>umount /mnt/primary
+=>umount /mnt/secondary
+=>reboot
+=>su
+=>service cloudstack-management stop
+=>service tomcat6 stop
+=>service cloudstack-agent stop
+=>ps -efl | grep java
+=>service cloudstack-management start
+=>service cloudstack-management status
+=>service cloudstack-agent start
+=>service cloudstack-agent status
+
+**NOW GO TO 10.10.40.110:8080/client/ and wait for 5 min to load the page
+
+
+
+
+
+
+
+
+
+
